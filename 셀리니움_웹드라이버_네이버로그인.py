@@ -7,10 +7,10 @@ import time
 
 #selenium 4.6이상은 웹드라이버 설치 없이 사용 
 driver = webdriver.Chrome()
-driver.get('https://nid.naver.com/nidlogin.login')
+driver.get('https://nid.naver.com/nidlogin.login?mode=form&url=https%3A%2F%2Fwww.naver.com&locale=ko_KR&svctype=1')
 
 # 로그인 창에 아이디/비밀번호 입력
-loginID = "kim"
+loginID = "papasmf1"
 clipboard.copy(loginID)
 #mac은 COMMAND, window는 CONTROL
 driver.find_element(By.XPATH,'//*[@id="id"]').send_keys(

@@ -11,8 +11,7 @@ for n in range(1,11):
         data ='https://www.todayhumor.co.kr/board/list.php?table=bestofbest&page=' + str(n)
         print(data)
         #웹브라우져 헤더 추가 
-        req = urllib.request.Request(data, \
-                                    headers = hdr)
+        req = urllib.request.Request(data, headers = hdr)
         data = urllib.request.urlopen(req).read()
         page = data.decode('utf-8', 'ignore')
         soup = BeautifulSoup(page, 'html.parser')
