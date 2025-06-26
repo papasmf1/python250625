@@ -3,7 +3,7 @@ import  openpyxl  as  op
 wb = op.load_workbook("test2.xlsx") 
 
 #특정 시트를 지정
-ws = wb["직원명부"] 
+ws = wb["직원명부"]
 
 #"B1" Cell에 입력하기
 ws.cell(row=1, column=2).value = "입력테스트1"
