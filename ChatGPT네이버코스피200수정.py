@@ -1,8 +1,13 @@
+import sys
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import time
 import re
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
+    QTableWidget, QTableWidgetItem, QLabel
+)
 
 def clean_number(text):
     """숫자 문자열에서 쉼표를 제거하고 정수로 변환"""
@@ -26,7 +31,6 @@ def get_kospi200_top_stocks(max_pages=10):
     }
     
     all_data = []
-    total_items = 0
     
     for page in range(1, max_pages + 1):
         try:
@@ -48,7 +52,6 @@ def get_kospi200_top_stocks(max_pages=10):
                 continue
                 
             rows = table.find_all("tr")
-            page_items = 0
             
             for row in rows:
                 cols = row.find_all("td")
@@ -93,13 +96,9 @@ def get_kospi200_top_stocks(max_pages=10):
                         "거래대금(백만)": amount,
                         "시가총액(억)": market_cap
                     })
-                    page_items += 1
-            
-            total_items += page_items
-            print(f"페이지 {page} 완료: {page_items}개 종목 추가 (현재 총 {total_items}개)")
             
             # 너무 빠른 요청은 차단될 수 있으므로 잠시 대기
-            time.sleep(1.0)  # 안정성을 위해 대기 시간 증가
+            time.sleep(0.5)  # 대기 시간 조정 (0.5초)
             
         except Exception as e:
             print(f"페이지 {page} 크롤링 중 오류 발생: {e}")
@@ -125,32 +124,60 @@ def get_kospi200_top_stocks(max_pages=10):
     print(f"총 {len(df)}개 종목 데이터 크롤링 완료")
     return df
 
-def save_to_excel(df, filename="코스피200_종목_전체.xlsx"):
-    """데이터프레임을 엑셀 파일로 저장"""
-    try:
-        df.to_excel(filename, index=False)
-        print(f"{filename} 파일로 저장되었습니다.")
-        return True
-    except Exception as e:
-        print(f"파일 저장 중 오류 발생: {e}")
-        return False
+class Kospi200App(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("코스피200 종목 검색")
+        self.resize(1100, 600)
+        self.df = get_kospi200_top_stocks(max_pages=10)
+        self.init_ui()
 
-# Example usage
+    def init_ui(self):
+        layout = QVBoxLayout()
+        # 검색창과 버튼
+        search_layout = QHBoxLayout()
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("종목명 또는 코드로 검색")
+        self.search_btn = QPushButton("검색")
+        self.search_btn.clicked.connect(self.search)
+        search_layout.addWidget(QLabel("검색:"))
+        search_layout.addWidget(self.search_input)
+        search_layout.addWidget(self.search_btn)
+        layout.addLayout(search_layout)
+        # 테이블
+        self.table = QTableWidget()
+        layout.addWidget(self.table)
+        self.setLayout(layout)
+        self.show_table(self.df)
+
+    def show_table(self, df):
+        self.table.clear()
+        if df.empty:
+            self.table.setRowCount(0)
+            self.table.setColumnCount(0)
+            return
+        self.table.setRowCount(len(df))
+        self.table.setColumnCount(len(df.columns))
+        self.table.setHorizontalHeaderLabels(df.columns)
+        for i, row in df.iterrows():
+            for j, col in enumerate(df.columns):
+                item = QTableWidgetItem(str(row[col]))
+                self.table.setItem(i, j, item)
+        self.table.resizeColumnsToContents()
+
+    def search(self):
+        keyword = self.search_input.text().strip()
+        if not keyword:
+            self.show_table(self.df)
+            return
+        filtered = self.df[
+            self.df['종목명'].str.contains(keyword, case=False, na=False) |
+            self.df['종목코드'].astype(str).str.contains(keyword, na=False)
+        ]
+        self.show_table(filtered)
+
 if __name__ == "__main__":
-    # 10개 페이지 크롤링 (약 100개 종목)
-    kospi200_stocks = get_kospi200_top_stocks(max_pages=10)  
-    
-    if not kospi200_stocks.empty:
-        # 처음 10개 종목만 출력
-        print("\n크롤링된 데이터 샘플 (상위 10개):")
-        print(kospi200_stocks.head(10))  
-        
-        # 결과 요약 출력
-        print(f"\n크롤링 결과 요약:")
-        print(f"- 총 종목 수: {len(kospi200_stocks)}개")
-        print(f"- 상승 종목: {len(kospi200_stocks[kospi200_stocks['상태'] == '상승'])}개")
-        print(f"- 하락 종목: {len(kospi200_stocks[kospi200_stocks['상태'] == '하락'])}개")
-        print(f"- 보합 종목: {len(kospi200_stocks[kospi200_stocks['상태'] == '보합'])}개")
-        
-        # 엑셀 파일로 저장
-        save_to_excel(kospi200_stocks)
+    app = QApplication(sys.argv)
+    window = Kospi200App()
+    window.show()
+    sys.exit(app.exec_())
